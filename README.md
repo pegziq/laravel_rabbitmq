@@ -1,0 +1,2 @@
+# laravel_rabbitmq
+laravel的独立rabbitmq插件
