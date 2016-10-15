@@ -1,6 +1,6 @@
 {
-    "name": "root/laravel_rabbitmq",
-    "require": {
-        "php-amqplib/php-amqplib": "^2.6"
-    }
+  "name": "pegziq/laravel_rabbitmq",
+  "require": {
+    "php-amqplib/php-amqplib": "^2.6"
+  }
 }
