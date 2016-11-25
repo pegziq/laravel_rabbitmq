@@ -29,7 +29,7 @@ class RabbitMQServiceProvider extends ServiceProvider
         $this->loadClasses();
 
         $this->app['queue_rb::listen'] = $this->app->share(function () {
-            return New Commands\RabbitMQListenerCommand($this->listener,$this->connector);
+            return New Console\RabbitMQListenerCommand($this->listener,$this->connector);
         });
     }
 
