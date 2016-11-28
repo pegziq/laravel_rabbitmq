@@ -3,11 +3,10 @@
 namespace Pegziq\LaravelRabbitMQ;
 
 use Illuminate\Support\ServiceProvider;
-use Pegziq\LaravelRabbitMQ\Connectors\RabbitMQConnector;
 
 class RabbitMQServiceProvider extends ServiceProvider
 {
-    protected $listener;
+    protected $consumer;
 
     protected $connector;
     /**
@@ -28,14 +27,13 @@ class RabbitMQServiceProvider extends ServiceProvider
     {
         $this->loadClasses();
 
-        $this->app['queue_rb::listen'] = $this->app->share(function () {
-            return New Console\RabbitMQListenerCommand($this->listener,$this->connector);
+        $this->app['queue_rb::listen'] = $this->app->share(function ($app) {
+            return New Console\RabbitMQListenerCommand($this->consumer,$app);
         });
     }
 
     protected function loadClasses(){
-        $this->listener = new RabbitMQListener();
-        $this->connector = new RabbitMQConnector();
+        $this->consumer = new Consumer();
     }
 
     /**
@@ -46,6 +44,6 @@ class RabbitMQServiceProvider extends ServiceProvider
     public function register()
     {
         //
-        $this->app->bind('LaravelRabbitMQ', 'Pegziq\LaravelRabbitMQ');
+        $this->app->bind('LRMQ', 'Pegziq\LaravelRabbitMQ');
     }
 }
