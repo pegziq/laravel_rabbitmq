@@ -27,8 +27,7 @@ class RabbitMQListenerCommand extends Command
         $closure = $this->callback();
         $this->consumer->init($connect, $this->args['queue']);
         $this->consumer->consume($this->args['queue'], function ($message) use ($closure) {
-            $callback = app()->make($closure, [$message]);
-            $callback->fire($message->body);
+            app()->call([app($closure,[$message]),'fire']);
         });
     }
 
