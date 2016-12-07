@@ -1,6 +1,16 @@
 {
   "name": "pegziq/laravel_rabbitmq",
+  "license": "MIT",
+  "support": {
+    "email": "pegziq@gmail.com"
+  },
   "require": {
-    "php-amqplib/php-amqplib": "^2.6"
+    "php-amqplib/php-amqplib": "^2.6",
+    "illuminate/support": "^5.3"
+  },
+  "autoload": {
+    "psr-4": {
+      "Pegziq\\LaravelRabbitMQ\\": "src/"
+    }
   }
 }
