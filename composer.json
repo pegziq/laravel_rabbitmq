@@ -5,8 +5,7 @@
     "email": "pegziq@gmail.com"
   },
   "require": {
-    "php-amqplib/php-amqplib": "^2.6",
-    "illuminate/support": "^5.3"
+    "php-amqplib/php-amqplib": "^2.6"
   },
   "autoload": {
     "psr-4": {
