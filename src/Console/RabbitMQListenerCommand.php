@@ -25,10 +25,14 @@ class RabbitMQListenerCommand extends Command
         $this->args = $this->option();
         $connect = $this->validateOptions();
         $closure = $this->callback();
-        if($closure){
+        if ($closure) {
             $this->consumer->init($connect, $this->args['queue']);
             $this->consumer->consume($this->args['queue'], function ($message) use ($closure) {
-                app()->call([app($closure,[$message]),'fire']);
+                try {
+                    app()->call([app($closure, [$message]), 'fire']);
+                } catch (Exception $e) {
+                    throw $e;
+                }
             });
         }
     }

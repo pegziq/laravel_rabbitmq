@@ -25,9 +25,18 @@ class RabbitMQ
             $config['port'],
             $config['login'],
             $config['password'],
-            $config['vhost']
-        );
-    }
+            $config['vhost'],
+            $config['insist'] ?? false,
+            $config['login_method'] ?? 'AMQPLAIN',
+            $config['login_response'] ?? null,
+            $config['locale'] ?? 'en_US',
+            $config['connection_timeout'] ?? 120,
+            $config['read_write_timeout'] ?? 120,
+            $config['context'] ?? null,
+            $config['keepalive'] ?? false,
+            $config['heartbeat'] ?? 60
+	);	
+   }
 
     public function declare($queue)
     {
