@@ -12,6 +12,7 @@ class RabbitMQListenerCommand extends Command
     protected $config;
     protected $queue_bind;
     private $consumer;
+    public $connection;
 
     public function __construct(Consumer $consumer)
     {

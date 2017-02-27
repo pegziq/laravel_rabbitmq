@@ -1,71 +1,70 @@
 <?php
+
 namespace Pegziq\LaravelRabbitMQ;
 
 use PhpAmqpLib\Connection\AMQPStreamConnection;
-use PhpAmqpLib\Exception\AMQPProtocolConnectionException;
 
 class RabbitMQ
 {
     public $connect;
-    protected $channel;
-    public $durable=true;
-    protected $config;
-    public $exchange_name;
-    public $queue_name;
-    public $routing_key;
+    public $channel;
+    protected $args;
+    protected $queue_bind;
+    protected $rabbitMQConnector;
 
-    public function __construct($config=array())
+    public function init($config, $queue)
     {
-        $this->setConfig($config);
-        $this->connection();
+        $this->connect = $this->connect($config);
+        $this->channel = $this->declare($queue);
     }
 
-    public function connection()
+    public function connect($config)
     {
-        if(!$this->connect){
-            try{
-                $config = $this->config;
-                return $this->connect = new AMQPStreamConnection(
-                    $config['host'],
-                    $config['port'],
-                    $config['login'],
-                    $config['password'],
-                    $config['vhost'],
-                    isset($config['insist']) ? $config['insist'] : false,
-                    isset($config['login_method']) ? $config['login_method'] : 'AMQPLAIN',
-                    isset($config['login_response']) ? $config['login_response'] : null,
-                    isset($config['locale']) ? $config['locale'] : 'en_US',
-                    isset($config['connection_timeout']) ? $config['connection_timeout'] : 3,
-                    isset($config['read_write_timeout']) ? $config['read_write_timeout'] : 3,
-                    isset($config['context']) ? $config['context'] : null,
-                    isset($config['keepalive']) ? $config['keepalive'] : false,
-                    isset($config['heartbeat']) ? $config['heartbeat'] : 0
-                );
-            }catch (AMQPProtocolConnectionException  $e){
-                throw new \Exception('cannot connect rabbitmq',500);
-            }
+        return new AMQPStreamConnection(
+            $config['host'],
+            $config['port'],
+            $config['login'],
+            $config['password'],
+            $config['vhost'],
+            $config['insist'] ?? false,
+            $config['login_method'] ?? 'AMQPLAIN',
+            $config['login_response'] ?? null,
+            $config['locale'] ?? 'en_US',
+            $config['connection_timeout'] ?? 120,
+            $config['read_write_timeout'] ?? 120,
+            $config['context'] ?? null,
+            $config['keepalive'] ?? false,
+            $config['heartbeat'] ?? 60
+	);	
+   }
+
+    public function declare($queue)
+    {
+        if (!$this->validate($queue)) return false;
+        $channel = $this->connect->channel();
+        $channel->queue_declare($queue, $this->args['passive'], true, false, false);
+        $channel->exchange_declare($this->args['exchange'], $this->args['exchange_type'], false, true, false);
+        $channel->queue_bind($queue, $this->args['exchange'], $this->args['routing_key']);
+        return $channel;
+    }
+
+    public function validate($queue)
+    {
+        $this->queue_bind = config('queue_bind');
+        if (!isset($this->queue_bind[$queue]) || !$this->queue_bind[$queue]['callback']) {
+            return false;
         }
+        $this->args['exchange'] = $this->queue_bind[$queue]['exchange'] ?? false;
+        $this->args['exchange_type'] = $this->queue_bind[$queue]['exchange_type'] ?? 'direct';
+        $this->args['routing_key'] = $this->queue_bind[$queue]['routing_key'] ?? false;
+        $this->args['callback'] = $this->queue_bind[$queue]['callback'] ?? false;
+        $this->args['passive'] = $this->queue_bind[$queue]['passive'] ?? false;
+        return true;
     }
 
-    protected function channel($exchange_name='',$queue_name='')
-    {
-        if ($queue_name && !$exchange_name){
-            $queue_bind = isset($this->config['queue_bind']) ? $this->config['queue_bind'] : config('queue_bind');
-            $exchange_name = $queue_bind['exchange'];
-        }
-        $exchange_bind = isset($this->config['exchange_bind']) ? $this->config['exchange_bind'] : config('exchange_bind');
-        $exchange_type = $exchange_bind[$exchange_name]['exchange_type'];
-        $this->channel = $this->connect->channel();
-        $this->channel->exchange_declare($exchange_name, $exchange_type, false, true, false);
-        return $this->channel;
-    }
-
-    public function channel_close(){
-        $this->channel->close();
-    }
-
-    public function connect_close(){
-        $this->connect->close();
+    public function getParams($queue){
+        $this->queue_bind = config('queue_bind');
+        return $this->queue_bind[$queue];
     }
 
     public function acknowledge($message)
@@ -74,24 +73,5 @@ class RabbitMQ
         if ($message->body === 'quit') {
             $message->delivery_info['channel']->basic_cancel($message->delivery_info['consumer_tag']);
         }
-    }
-
-    /**检查配置
-     * @param array $config
-     */
-    public function setConfig(array $config)
-    {
-        if (!($config['host'] && $config['port'] && $config['login'] && $config['password'])) {
-            throw new Exception('config is empty');
-        }
-        empty($config['vhost']) && $config['vhost'] =  '/';
-        $this->config = $config;
-    }
-
-    /*
-     * 设置是否持久化，默认为True
-     */
-    public function setDurable($durable) {
-        $this->durable = $durable;
     }
 }

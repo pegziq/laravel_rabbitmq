@@ -21,9 +21,6 @@ class RabbitMQServiceProvider extends ServiceProvider
         $this->commands(
             'queue_rb::listen'
         );
-        $this->publishes([
-            __DIR__ . '/../config/queue_bind.php' => config_path('queue_bind.php'),
-        ]);
     }
 
     protected function registerListenCommand()
