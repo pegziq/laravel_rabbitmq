@@ -12,7 +12,6 @@ class RabbitMQListenerCommand extends Command
     protected $config;
     protected $queue_bind;
     private $consumer;
-    public $connection;
 
     public function __construct(Consumer $consumer)
     {
@@ -25,10 +24,16 @@ class RabbitMQListenerCommand extends Command
         $this->args = $this->option();
         $connect = $this->validateOptions();
         $closure = $this->callback();
-        $this->consumer->init($connect, $this->args['queue']);
-        $this->consumer->consume($this->args['queue'], function ($message) use ($closure) {
-            app()->call([app($closure,[$message]),'fire']);
-        });
+        if ($closure) {
+            $this->consumer->init($connect, $this->args['queue']);
+            $this->consumer->consume($this->args['queue'], function ($message) use ($closure) {
+                try {
+                    app()->call([app($closure, [$message]), 'fire']);
+                } catch (Exception $e) {
+                    throw $e;
+                }
+            });
+        }
     }
 
     public function validateOptions()
@@ -41,7 +46,7 @@ class RabbitMQListenerCommand extends Command
     public function callback()
     {
         $params = $this->consumer->getParams($this->args['queue']);
-        return $params['callback'];
+        return $params['callback'] ?? false;
     }
 
 
