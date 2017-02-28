@@ -6,15 +6,15 @@ use PhpAmqpLib\Exception\AMQPProtocolConnectionException;
 
 class RabbitMQ
 {
+    public $channel;
     public $connect;
-    protected $channel;
-    public $durable=true;
-    protected $config;
+    public $durable = true;
     public $exchange_name;
     public $queue_name;
     public $routing_key;
+    protected $config;
 
-    public function __construct($config=array())
+    public function __construct($config = array())
     {
         $this->setConfig($config);
         $this->connection();
@@ -22,8 +22,8 @@ class RabbitMQ
 
     public function connection()
     {
-        if(!$this->connect){
-            try{
+        if (!$this->connect) {
+            try {
                 $config = $this->config;
                 return $this->connect = new AMQPStreamConnection(
                     $config['host'],
@@ -41,31 +41,36 @@ class RabbitMQ
                     isset($config['keepalive']) ? $config['keepalive'] : false,
                     isset($config['heartbeat']) ? $config['heartbeat'] : 0
                 );
-            }catch (AMQPProtocolConnectionException  $e){
-                throw new \Exception('cannot connect rabbitmq',500);
+            } catch (AMQPProtocolConnectionException  $e) {
+                throw new \Exception('cannot connect rabbitmq', 500);
             }
         }
     }
 
-    protected function channel($exchange_name='',$queue_name='')
+    public function channel($exchange_name = '', $queue_name = '')
     {
-        if ($queue_name && !$exchange_name){
-            $queue_bind = isset($this->config['queue_bind']) ? $this->config['queue_bind'] : config('queue_bind');
-            $exchange_name = $queue_bind['exchange'];
+
+        if ($queue_name && !$exchange_name) {
+            if (!isset($this->config['queue_bind']) ||
+                !isset($this->config['queue_bind'][$queue_name]) ||
+                !isset($this->config['queue_bind'][$queue_name]['exchange'])
+            ) {
+                throw new \Exception('no queue bind', 500);
+            }
+            $exchange_name = $this->config['queue_bind'][$queue_name]['exchange'];
+            $this->routing_key = isset($this->config['queue_bind'][$queue_name]['routing_key']) ? $this->config['queue_bind'][$queue_name]['routing_key'] : '';
         }
-        $exchange_bind = isset($this->config['exchange_bind']) ? $this->config['exchange_bind'] : config('exchange_bind');
-        $exchange_type = $exchange_bind[$exchange_name]['exchange_type'];
+        if (!isset($this->config['exchange_bind']) ||
+            !isset($this->config['exchange_bind'][$exchange_name]) ||
+            !isset($this->config['exchange_bind'][$exchange_name]['exchange_type'])
+        ) {
+            throw new \Exception('no exchange bind', 500);
+        }
+        $exchange_name && $this->exchange_name = $exchange_name;
+        $queue_name && $this->queue_name = $queue_name;
         $this->channel = $this->connect->channel();
-        $this->channel->exchange_declare($exchange_name, $exchange_type, false, true, false);
+        $this->channel->exchange_declare($exchange_name, $this->config['exchange_bind'][$exchange_name]['exchange_type'], false, true, false);
         return $this->channel;
-    }
-
-    public function channel_close(){
-        $this->channel->close();
-    }
-
-    public function connect_close(){
-        $this->connect->close();
     }
 
     public function acknowledge($message)
@@ -84,14 +89,20 @@ class RabbitMQ
         if (!($config['host'] && $config['port'] && $config['login'] && $config['password'])) {
             throw new Exception('config is empty');
         }
-        empty($config['vhost']) && $config['vhost'] =  '/';
+        empty($config['vhost']) && $config['vhost'] = '/';
         $this->config = $config;
+    }
+
+    public function getConfig()
+    {
+        return $this->config;
     }
 
     /*
      * 设置是否持久化，默认为True
      */
-    public function setDurable($durable) {
+    public function setDurable($durable)
+    {
         $this->durable = $durable;
     }
 }

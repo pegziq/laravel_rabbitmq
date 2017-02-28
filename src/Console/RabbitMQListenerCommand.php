@@ -13,19 +13,21 @@ class RabbitMQListenerCommand extends Command
     protected $queue_bind;
     private $consumer;
 
-    public function __construct(Consumer $consumer)
+    public function __construct()
     {
         parent::__construct();
-        $this->consumer = $consumer;
+        $config = $this->validateOptions();
+        if(!$config){
+            throw new \Exception('no config file', 500);
+        }
+        $this->consumer = new Consumer($config);
     }
 
     public function fire()
     {
         $this->args = $this->option();
-        $connect = $this->validateOptions();
-        $closure = $this->callback();
+        $closure = $this->callback($this->args['queue']);
         if ($closure) {
-            $this->consumer->init($connect, $this->args['queue']);
             $this->consumer->consume($this->args['queue'], function ($message) use ($closure) {
                 try {
                     app()->call([app($closure, [$message]), 'fire']);
@@ -33,20 +35,22 @@ class RabbitMQListenerCommand extends Command
                     throw $e;
                 }
             });
+        } else {
+            throw new \Exception('no callback function', 500);
         }
     }
 
     public function validateOptions()
     {
         $config = config('queue');
-        $machine = $this->argument('connect') ?? 'rabbitmq';
-        return $config['connections'][$machine];
+        $machine = $this->argument('connect') ? $this->argument('connect') : 'rabbitmq';
+        return isset($config['connections'][$machine]) ? $config['connections'][$machine] : false;
     }
 
-    public function callback()
+    public function callback($queue)
     {
-        $params = $this->consumer->getParams($this->args['queue']);
-        return $params['callback'] ?? false;
+        $params = $this->consumer->getConfig();
+        return isset($params['queue_bind'][$queue]['callback']) ? $params['queue_bind'][$queue]['callback'] : false;
     }
 
 
