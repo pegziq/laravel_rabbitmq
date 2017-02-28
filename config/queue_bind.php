@@ -1,10 +1,16 @@
 <?php
 
 return [
-    'triggers' => [
-        'exchange' => 'marketing', 'exchange_type' => 'topic', 'routing_key' => 'trigger.#', 'callback' => 'App\Queues\Triggers'
+    'queue_bind' => [
+        'loan' => [
+            'exchange' => 'tender',
+            'routing_key' => 'loan.*',
+            'callback' => 'Action'
+        ]
     ],
-    'message' => [
-        'exchange' => 'immediate_job'
+    'exchange_bind' => [
+        'tender' => [
+            'exchange_type' => 'direct'
+        ]
     ]
 ];

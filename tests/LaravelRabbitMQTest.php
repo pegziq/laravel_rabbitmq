@@ -8,10 +8,10 @@ use Pegziq\LaravelRabbitMQ\Consumer;
 class LaravelRabbitMQTest extends TestCase
 {
     public $publish;
-    protected $input;
     public $consumer;
     protected $config;
-    public $queue = 'loan';
+    public $exchange_name = 'test';
+    public $queue_name = 'test';
 
     public function __construct()
     {
@@ -29,26 +29,42 @@ class LaravelRabbitMQTest extends TestCase
     /**
      * @depends testConnect
      */
-//    public function testPublish(){
-//        $a = $this->publish->publish(null,'tender','send');
-//    }
+    public function testPublish()
+    {
+        /**
+         * 为了初始化queue和exchange，如果保证有queue和exchange，可省略
+         */
+        $this->publish->channel($this->exchange_name, $this->queue_name);
+        $this->publish->channel->queue_declare($this->queue_name, false, true, false, false);
+        $this->publish->channel->queue_bind($this->queue_name, $this->exchange_name);
+        //end
+        $ret = $this->publish->publish('one message', $this->exchange_name, '', ['delivery_mode' => 2]);
+        $this->output('message send success');
+        $this->assertNull($ret);
+        return $ret;
+    }
 
     /**
-     * @depends testConnect
+     * @depends testPublish
      */
-    public function testConsumer(){
-        $callback = $this->consumer->callback;
-        $this->consumer->consume('loan',function ($message) use ($callback,$app) {
+    public function testConsumer($ret)
+    {
+        $this->consumer->consume($this->queue_name, function ($message) {
             try {
-                App::call([$app->make($callback, [$message]), 'fire']);
+                $action = new Action($message);
+                $this->output('message receive success');
+                $ret = $action->fire();
+                $this->assertTrue($ret);
             } catch (Exception $e) {
                 throw $e;
             }
         });
+        return true;
     }
 
-    public function output($msg){
-        echo $msg.PHP_EOL;
+    public function output($msg)
+    {
+        echo $msg . PHP_EOL;
     }
 
 
